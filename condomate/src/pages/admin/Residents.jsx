@@ -15,9 +15,11 @@ export default function AdminResidents() {
     event.preventDefault();
     if (!/^\d{3}$/.test(form.room)) { setMessage("เลขห้องต้องเป็นตัวเลข 3 หลัก"); return; }
     if (!editing && form.password.length < 6) { setMessage("รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร"); return; }
-    if (editing) updateResident(editing, { name: form.name, phone: form.phone, status: form.status, password: form.password || undefined });
-    else addResident(form);
-    setForm(empty); setEditing(null); setMessage("");
+    const result = editing
+      ? await updateResident(editing, { name: form.name, phone: form.phone, status: form.status, password: form.password || undefined })
+      : await addResident(form);
+    if (!result.ok) { setMessage(`บันทึกไม่สำเร็จ: ${result.error}`); return; }
+    setForm(empty); setEditing(null); setMessage("บันทึกข้อมูลเรียบร้อย");
   };
   const edit = (resident) => { setEditing(resident.room); setForm(resident); setMessage(""); };
   const cancel = () => { setEditing(null); setForm(empty); setMessage(""); };

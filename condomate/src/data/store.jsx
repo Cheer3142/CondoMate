@@ -83,7 +83,9 @@ export function DataProvider({ children }) {
 
   // Every action: call the API, apply the returned state, surface errors
   // (e.g. backend not running) instead of failing silently.
-  const run = (promise) => promise.then(setData).catch((e) => setError(e.message));
+  const run = (promise) => promise
+    .then((nextData) => { setData(nextData); return { ok: true }; })
+    .catch((e) => ({ ok: false, error: e.message }));
 
   const actions = {
     addTicket: (t) => run(api.addTicket(t, session?.token)),
