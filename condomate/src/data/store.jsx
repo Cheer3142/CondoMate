@@ -119,9 +119,9 @@ export function DataProvider({ children }) {
       try {
         const result = await api.adminLogin(username, password);
         setAdminSession(result);
-        return true;
-      } catch {
-        return false;
+        return { ok: true };
+      } catch (e) {
+        return { ok: false, error: e.message };
       }
     },
     logoutAdmin: () => {

@@ -10,8 +10,8 @@ export default function AdminLogin() {
   if (adminSession) return <Navigate to="/admin" replace />;
   const submit = async (event) => {
     event.preventDefault();
-    const ok = await loginAdmin(username, password);
-    if (!ok) setMessage("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+    const result = await loginAdmin(username, password);
+    if (!result.ok) setMessage(result.error === "invalid username or password" ? "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" : `เข้าสู่ระบบไม่ได้: ${result.error}`);
   };
   return <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 20 }}>
     <form onSubmit={submit} className="cm-card" style={{ width: "100%", maxWidth: 360, padding: 24 }}>
