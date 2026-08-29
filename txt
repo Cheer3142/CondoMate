@@ -1,0 +1,6 @@
+cd C:\Users\Cheer\Desktop\Bussy\CondoMate\CondoMate\condomate
+npm install
+npm run dev
+
+Demo credentials: admin / condomate-admin
+aafsafsafasfasfsaf5as454546456464645468213123

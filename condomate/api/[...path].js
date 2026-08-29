@@ -7,6 +7,12 @@ import { put } from "@vercel/blob";
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "4mb" }));
+// `vercel.json` forwards every /api/* request to api/index.js. Restore the
+// original API path so Express can match the existing routes below.
+app.use((req, res, next) => {
+  if (req.path === "/api/index" && typeof req.query.path === "string") req.url = req.query.path;
+  next();
+});
 
 const sql = neon(process.env.DATABASE_URL);
 const SESSION_SECRET = process.env.SESSION_SECRET;
