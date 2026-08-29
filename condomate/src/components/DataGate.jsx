@@ -2,7 +2,7 @@ import React from "react";
 import { useData } from "../data/store";
 
 export default function DataGate({ children }) {
-  const { data, error, retry } = useData();
+  const { data, error, retry, session, adminSession } = useData();
 
   if (error) {
     return (
@@ -13,6 +13,8 @@ export default function DataGate({ children }) {
       </div>
     );
   }
+
+  if (!data && !session && !adminSession) return children;
 
   if (!data) {
     return (

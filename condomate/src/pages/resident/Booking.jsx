@@ -39,8 +39,8 @@ export default function ResidentBooking() {
               key={s}
               disabled={!!takenBy && !mine}
               onClick={async () => {
-                if (mine) { await cancelBooking(key, session.room); setMessage("ยกเลิกการจองแล้ว"); }
-                else { await bookSlot(key, session.room); setMessage(`จอง ${f} เวลา ${s} แล้ว`); }
+                if (mine) { await cancelBooking(key); setMessage("ยกเลิกการจองแล้ว"); }
+                else { await bookSlot(key); setMessage(`จอง ${f} เวลา ${s} แล้ว`); }
               }}
               className="cm-slot"
               style={{

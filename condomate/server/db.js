@@ -2,11 +2,16 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
+import { promisify } from "node:util";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DB_PATH = path.join(__dirname, "data", "db.json");
 let idCounter = 3000;
 const nextId = () => ++idCounter;
+const scrypt = promisify(scryptCallback);
+async function hashPassword(password) { const salt = randomBytes(16).toString("hex"); return `${salt}:${(await scrypt(password, salt, 64)).toString("hex")}`; }
+async function verifyPassword(password, stored) { if (!stored) return false; const [salt, value] = stored.split(":"); const derived = await scrypt(password, salt, 64); return timingSafeEqual(Buffer.from(value, "hex"), derived); }
 
 function seedState() {
   return {
@@ -43,6 +48,7 @@ function ensureRoom(room) { if (!/^\d{3}$/.test(room)) throw new Error("room mus
 
 export const db = {
   getState: () => load(),
+  publicState: (source) => { const copy = structuredClone(source); copy.residents.forEach((resident) => delete resident.passwordHash); return copy; },
   addTicket: (t) => mutate((s) => s.tickets.unshift({ id: nextId(), status: "new", note: "", imageUrl: "", ...t })),
   updateTicket: (id, patch) => mutate((s) => { const ticket = s.tickets.find((t) => t.id === Number(id)); if (!ticket) throw new Error("ticket not found"); Object.assign(ticket, patch); }),
   addParcel: (p) => mutate((s) => s.parcels.unshift({ id: nextId(), ack: false, ...p })),
@@ -52,8 +58,8 @@ export const db = {
   bookSlot: (key, room) => mutate((s) => { if (!s.residents.some((r) => r.room === room)) throw new Error("room not found"); if (s.bookings[key]) throw new Error("slot already booked"); s.bookings[key] = room; }),
   cancelBooking: (key, room) => mutate((s) => { if (s.bookings[key] !== room) throw new Error("booking not found"); delete s.bookings[key]; }),
   updateFacility: (name, patch) => mutate((s) => { const facility = s.facilities.find((f) => f.name === name); if (!facility) throw new Error("facility not found"); Object.assign(facility, patch); }),
-  login: async (room) => { ensureRoom(room); const s = await load(); if (!s.residents.some((r) => r.room === room)) throw new Error("room not found"); return s; },
-  addResident: (resident) => mutate((s) => { ensureRoom(resident.room); if (s.residents.some((r) => r.room === resident.room)) throw new Error("room already exists"); s.residents.push({ name: "", phone: "", status: "active", ...resident }); }),
-  updateResident: (room, patch) => mutate((s) => { const resident = s.residents.find((r) => r.room === room); if (!resident) throw new Error("room not found"); Object.assign(resident, patch); }),
+  login: async (room, password) => { ensureRoom(room); const s = await load(); const resident = s.residents.find((r) => r.room === room); if (!resident || resident.status !== "active" || !(await verifyPassword(password, resident.passwordHash))) throw new Error("invalid room or password"); return { state: s, resident }; },
+  addResident: async (resident, password) => { if (!password || password.length < 6) throw new Error("password must be at least 6 characters"); const passwordHash = await hashPassword(password); return mutate((s) => { ensureRoom(resident.room); if (s.residents.some((r) => r.room === resident.room)) throw new Error("room already exists"); s.residents.push({ name: "", phone: "", status: "active", ...resident, passwordHash }); }); },
+  updateResident: async (room, patch, password) => { const passwordHash = password ? await hashPassword(password) : undefined; return mutate((s) => { const resident = s.residents.find((r) => r.room === room); if (!resident) throw new Error("room not found"); Object.assign(resident, patch, passwordHash ? { passwordHash } : {}); }); },
   deleteResident: (room) => mutate((s) => { if (!s.residents.some((r) => r.room === room)) throw new Error("room not found"); s.residents = s.residents.filter((r) => r.room !== room); s.tickets = s.tickets.filter((t) => t.room !== room); s.parcels = s.parcels.filter((p) => p.room !== room); for (const [key, bookedRoom] of Object.entries(s.bookings)) if (bookedRoom === room) delete s.bookings[key]; }),
 };

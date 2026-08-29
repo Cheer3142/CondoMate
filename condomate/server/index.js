@@ -13,6 +13,7 @@ app.use(express.json({ limit: "6mb" }));
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOAD_DIR = path.join(__dirname, "uploads");
 const adminSessions = new Map();
+const residentSessions = new Map();
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "admin";
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "condomate-admin";
 
@@ -25,6 +26,13 @@ function requireAdmin(req, res, next) {
     if (token) adminSessions.delete(token);
     return res.status(401).json({ error: "admin authentication required" });
   }
+  next();
+}
+function requireResident(req, res, next) {
+  const token = req.get("authorization")?.replace(/^Bearer\s+/i, "");
+  const session = token && residentSessions.get(token);
+  if (!session || session.expiresAt < Date.now()) return res.status(401).json({ error: "resident authentication required" });
+  req.residentRoom = session.room;
   next();
 }
 
@@ -42,7 +50,7 @@ async function saveImage(dataUrl) {
 }
 
 const send = (res, promise) =>
-  promise.then((state) => res.json(state)).catch((err) => {
+  promise.then((state) => res.json(db.publicState(state))).catch((err) => {
     console.error(err);
     res.status(500).json({ error: "internal_error" });
   });
@@ -52,10 +60,10 @@ const send = (res, promise) =>
 app.get("/api/state", (req, res) => send(res, db.getState()));
 
 // Maintenance tickets (แจ้งซ่อม)
-app.post("/api/tickets", (req, res) => {
-  const { room, type, detail, image } = req.body || {};
-  if (!room || !type || !detail) return res.status(400).json({ error: "room, type, detail required" });
-  saveImage(image).then((imageUrl) => db.addTicket({ room, type, detail, imageUrl })).then((state) => res.json(state)).catch((err) => {
+app.post("/api/tickets", requireResident, (req, res) => {
+  const { type, detail, image } = req.body || {};
+  if (!type || !detail) return res.status(400).json({ error: "type, detail required" });
+  saveImage(image).then((imageUrl) => db.addTicket({ room: req.residentRoom, type, detail, imageUrl })).then((state) => res.json(db.publicState(state))).catch((err) => {
     res.status(400).json({ error: err.message || "image upload failed" });
   });
 });
@@ -67,7 +75,11 @@ app.post("/api/parcels", requireAdmin, (req, res) => {
   if (!room || !courier) return res.status(400).json({ error: "room, courier required" });
   send(res, db.addParcel({ room, courier, time: time || new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }) }));
 });
-app.patch("/api/parcels/:id/ack", (req, res) => send(res, db.ackParcel(req.params.id)));
+app.patch("/api/parcels/:id/ack", requireResident, async (req, res) => {
+  const state = await db.getState();
+  if (!state.parcels.some((parcel) => parcel.id === Number(req.params.id) && parcel.room === req.residentRoom)) return res.status(403).json({ error: "forbidden" });
+  send(res, db.ackParcel(req.params.id));
+});
 
 // Announcements (ประกาศ)
 app.post("/api/announcements", requireAdmin, (req, res) => {
@@ -78,15 +90,15 @@ app.post("/api/announcements", requireAdmin, (req, res) => {
 app.delete("/api/announcements/:id", requireAdmin, (req, res) => send(res, db.deleteAnnouncement(req.params.id)));
 
 // Facility bookings (จองส่วนกลาง)
-app.post("/api/bookings", (req, res) => {
-  const { key, room } = req.body || {};
-  if (!key || !room) return res.status(400).json({ error: "key, room required" });
-  db.bookSlot(key, room).then((state) => res.json(state)).catch((err) => res.status(err.message === "slot already booked" ? 409 : 400).json({ error: err.message }));
+app.post("/api/bookings", requireResident, (req, res) => {
+  const { key } = req.body || {};
+  if (!key) return res.status(400).json({ error: "key required" });
+  db.bookSlot(key, req.residentRoom).then((state) => res.json(db.publicState(state))).catch((err) => res.status(err.message === "slot already booked" ? 409 : 400).json({ error: err.message }));
 });
-app.delete("/api/bookings", (req, res) => {
-  const { key, room } = req.body || {};
-  if (!key || !room) return res.status(400).json({ error: "key, room required" });
-  db.cancelBooking(key, room).then((state) => res.json(state)).catch((err) => res.status(400).json({ error: err.message }));
+app.delete("/api/bookings", requireResident, (req, res) => {
+  const { key } = req.body || {};
+  if (!key) return res.status(400).json({ error: "key required" });
+  db.cancelBooking(key, req.residentRoom).then((state) => res.json(db.publicState(state))).catch((err) => res.status(400).json({ error: err.message }));
 });
 
 // Facility settings (นิติบุคคล only, no auth check yet — see README)
@@ -108,20 +120,26 @@ app.post("/api/admin/logout", requireAdmin, (req, res) => {
 app.post("/api/residents", requireAdmin, (req, res) => {
   const { room, name = "", phone = "", status = "active" } = req.body || {};
   if (!room) return res.status(400).json({ error: "room required" });
-  db.addResident({ room, name, phone, status }).then((state) => res.json(state)).catch((err) => res.status(400).json({ error: err.message }));
+  const { password } = req.body || {};
+  db.addResident({ room, name, phone, status }, password).then((state) => res.json(db.publicState(state))).catch((err) => res.status(400).json({ error: err.message }));
 });
 app.patch("/api/residents/:room", requireAdmin, (req, res) => {
-  db.updateResident(req.params.room, req.body || {}).then((state) => res.json(state)).catch((err) => res.status(400).json({ error: err.message }));
+  const { password, ...patch } = req.body || {};
+  db.updateResident(req.params.room, patch, password).then((state) => res.json(db.publicState(state))).catch((err) => res.status(400).json({ error: err.message }));
 });
 app.delete("/api/residents/:room", requireAdmin, (req, res) => {
-  db.deleteResident(req.params.room).then((state) => res.json(state)).catch((err) => res.status(400).json({ error: err.message }));
+  db.deleteResident(req.params.room).then((state) => res.json(db.publicState(state))).catch((err) => res.status(400).json({ error: err.message }));
 });
 
 // Phase 1 stand-in login: room number only, no password/OTP.
 app.post("/api/session/login", (req, res) => {
-  const { room } = req.body || {};
-  if (!room) return res.status(400).json({ error: "room required" });
-  db.login(room).then((state) => res.json(state)).catch((err) => res.status(400).json({ error: err.message }));
+  const { room, password } = req.body || {};
+  if (!room || !password) return res.status(400).json({ error: "room and password required" });
+  db.login(room, password).then(({ state, resident }) => {
+    const token = crypto.randomUUID();
+    residentSessions.set(token, { room, expiresAt: Date.now() + 1000 * 60 * 60 * 12 });
+    res.json({ state: db.publicState(state), token, resident: db.publicState({ residents: [resident] }).residents[0] });
+  }).catch((err) => res.status(401).json({ error: err.message }));
 });
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));

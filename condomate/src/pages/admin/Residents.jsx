@@ -3,7 +3,7 @@ import { Pencil, Plus, Save, Trash2, X } from "lucide-react";
 import { useData } from "../../data/store";
 import SectionTitle from "../../components/SectionTitle";
 
-const empty = { room: "", name: "", phone: "", status: "active" };
+const empty = { room: "", name: "", phone: "", status: "active", password: "" };
 
 export default function AdminResidents() {
   const { data, addResident, updateResident, deleteResident } = useData();
@@ -14,7 +14,8 @@ export default function AdminResidents() {
   const submit = async (event) => {
     event.preventDefault();
     if (!/^\d{3}$/.test(form.room)) { setMessage("เลขห้องต้องเป็นตัวเลข 3 หลัก"); return; }
-    if (editing) updateResident(editing, { name: form.name, phone: form.phone, status: form.status });
+    if (!editing && form.password.length < 6) { setMessage("รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร"); return; }
+    if (editing) updateResident(editing, { name: form.name, phone: form.phone, status: form.status, password: form.password || undefined });
     else addResident(form);
     setForm(empty); setEditing(null); setMessage("");
   };
@@ -27,6 +28,7 @@ export default function AdminResidents() {
         <label style={{ fontSize: 12, fontWeight: 700 }}>ห้อง<input disabled={!!editing} className="cm-input" style={{ marginTop: 4 }} value={form.room} inputMode="numeric" maxLength={3} onChange={(e) => change("room", e.target.value.replace(/\D/g, ""))} placeholder="999" /></label>
         <label style={{ fontSize: 12, fontWeight: 700 }}>ชื่อ<input className="cm-input" style={{ marginTop: 4 }} value={form.name} onChange={(e) => change("name", e.target.value)} /></label>
         <label style={{ fontSize: 12, fontWeight: 700 }}>เบอร์โทร<input className="cm-input" style={{ marginTop: 4 }} value={form.phone} onChange={(e) => change("phone", e.target.value)} /></label>
+        <label style={{ fontSize: 12, fontWeight: 700 }}>รหัสผ่าน<input type="password" className="cm-input" style={{ marginTop: 4 }} value={form.password} onChange={(e) => change("password", e.target.value)} placeholder={editing ? "เว้นว่างหากไม่เปลี่ยน" : "อย่างน้อย 6 ตัว"} /></label>
         <label style={{ fontSize: 12, fontWeight: 700 }}>สถานะ<select className="cm-input" style={{ marginTop: 4 }} value={form.status} onChange={(e) => change("status", e.target.value)}><option value="active">ใช้งาน</option><option value="inactive">ไม่ใช้งาน</option></select></label>
         <div style={{ display: "flex", gap: 6 }}><button className="cm-btn" title={editing ? "บันทึก" : "เพิ่มห้อง"}>{editing ? <Save size={15} /> : <Plus size={15} />}{editing ? "บันทึก" : "เพิ่ม"}</button>{editing && <button type="button" onClick={cancel} className="cm-btn" style={{ background: "var(--ink-soft)" }} title="ยกเลิก"><X size={15} /></button>}</div>
       </div>

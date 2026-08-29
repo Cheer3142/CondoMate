@@ -39,9 +39,11 @@ export function DataProvider({ children }) {
   const previousData = useRef(null);
 
   const refresh = useCallback(() => {
+    const activeToken = adminSession?.token || session?.token;
+    if (!activeToken) return Promise.resolve();
     setError(null);
-    return api.getState().then(setData).catch((e) => setError(e.message));
-  }, []);
+    return api.getState(activeToken).then(setData).catch((e) => setError(e.message));
+  }, [adminSession?.token, session?.token]);
 
   useEffect(() => {
     refresh();
@@ -84,28 +86,27 @@ export function DataProvider({ children }) {
   const run = (promise) => promise.then(setData).catch((e) => setError(e.message));
 
   const actions = {
-    addTicket: (t) => run(api.addTicket(t)),
+    addTicket: (t) => run(api.addTicket(t, session?.token)),
     updateTicket: (id, patch) => run(api.updateTicket(id, patch, adminSession?.token)),
     addParcel: (p) => run(api.addParcel(p, adminSession?.token)),
-    ackParcel: (id) => run(api.ackParcel(id)),
+    ackParcel: (id) => run(api.ackParcel(id, session?.token)),
     addAnnouncement: (a) => run(api.addAnnouncement(a, adminSession?.token)),
     deleteAnnouncement: (id) => run(api.deleteAnnouncement(id, adminSession?.token)),
-    bookSlot: (key, room) => run(api.bookSlot(key, room)),
-    cancelBooking: (key, room) => run(api.cancelBooking(key, room)),
+    bookSlot: (key) => run(api.bookSlot(key, session?.token)),
+    cancelBooking: (key) => run(api.cancelBooking(key, session?.token)),
     updateFacility: (name, patch) => run(api.updateFacility(name, patch, adminSession?.token)),
     addResident: (resident) => run(api.addResident(resident, adminSession?.token)),
     updateResident: (room, patch) => run(api.updateResident(room, patch, adminSession?.token)),
     deleteResident: (room) => run(api.deleteResident(room, adminSession?.token)),
     retry: refresh,
 
-    login: async (room, name) => {
+    login: async (room, password) => {
       const trimmed = room.trim();
       if (!trimmed) return false;
       try {
-        const nextData = await api.login(trimmed, name || "");
-        setData(nextData);
-        const resident = nextData.residents.find((r) => r.room === trimmed);
-        setSession({ room: trimmed, name: resident?.name || trimmed });
+        const result = await api.login(trimmed, password);
+        setData(result.state);
+        setSession({ room: trimmed, name: result.resident?.name || trimmed, token: result.token });
         return true;
       } catch (e) {
         setError(e.message);
