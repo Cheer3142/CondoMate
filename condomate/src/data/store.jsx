@@ -42,7 +42,12 @@ export function DataProvider({ children }) {
     const activeToken = adminSession?.token || session?.token;
     if (!activeToken) return Promise.resolve();
     setError(null);
-    return api.getState(activeToken).then(setData).catch((e) => setError(e.message));
+    return api.getState(activeToken).then(setData).catch((e) => {
+      if (e.message === "authentication required") {
+        setSession(null); setAdminSession(null); setData(null);
+      }
+      setError(e.message);
+    });
   }, [adminSession?.token, session?.token]);
 
   useEffect(() => {
@@ -84,7 +89,7 @@ export function DataProvider({ children }) {
   // Every action: call the API, apply the returned state, surface errors
   // (e.g. backend not running) instead of failing silently.
   const run = (promise) => promise
-    .then((nextData) => { setData(nextData); return { ok: true }; })
+    .then((nextData) => { setError(null); setData(nextData); return { ok: true }; })
     .catch((e) => ({ ok: false, error: e.message }));
 
   const actions = {
@@ -107,11 +112,11 @@ export function DataProvider({ children }) {
       if (!trimmed) return false;
       try {
         const result = await api.login(trimmed, password);
+        setError(null);
         setData(result.state);
         setSession({ room: trimmed, name: result.resident?.name || trimmed, token: result.token });
         return true;
-      } catch (e) {
-        setError(e.message);
+      } catch {
         return false;
       }
     },

@@ -39,8 +39,8 @@ export default function ResidentBooking() {
               key={s}
               disabled={!!takenBy && !mine}
               onClick={async () => {
-                if (mine) { await cancelBooking(key); setMessage("ยกเลิกการจองแล้ว"); }
-                else { await bookSlot(key); setMessage(`จอง ${f} เวลา ${s} แล้ว`); }
+                const result = mine ? await cancelBooking(key) : await bookSlot(key);
+                setMessage(result.ok ? (mine ? "ยกเลิกการจองแล้ว" : `จอง ${f} เวลา ${s} แล้ว`) : `ทำรายการไม่สำเร็จ: ${result.error}`);
               }}
               className="cm-slot"
               style={{
@@ -57,7 +57,7 @@ export default function ResidentBooking() {
           );
         })}
       </div>
-      {message && <p style={{ color: "var(--green)", fontSize: 12, fontWeight: 600, margin: "12px 0 0" }}>{message}</p>}
+      {message && <p style={{ color: message.includes("ไม่สำเร็จ") ? "var(--red)" : "var(--green)", fontSize: 12, fontWeight: 600, margin: "12px 0 0" }}>{message}</p>}
     </div>
   );
 }

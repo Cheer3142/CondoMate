@@ -10,11 +10,14 @@ export default function AdminAnnounce() {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [body, setBody] = useState("");
+  const [message, setMessage] = useState("");
 
-  const submit = () => {
+  const submit = async () => {
     if (!title.trim() || !body.trim()) return;
-    addAnnouncement({ title, date, time, body });
+    const result = await addAnnouncement({ title, date, time, body });
+    if (!result.ok) { setMessage(`เผยแพร่ไม่สำเร็จ: ${result.error}`); return; }
     setTitle(""); setDate(""); setTime(""); setBody(""); setForm(false);
+    setMessage("เผยแพร่ประกาศเรียบร้อย");
   };
 
   return (
@@ -35,6 +38,7 @@ export default function AdminAnnounce() {
           <button onClick={submit} className="cm-btn" style={{ alignSelf: "flex-start" }}>เผยแพร่ประกาศ</button>
         </div>
       )}
+      {message && <p style={{ fontSize: 12, color: message.includes("ไม่สำเร็จ") ? "var(--red)" : "var(--green)", margin: "0 0 12px" }}>{message}</p>}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {data.announcements.map((a) => (
@@ -44,7 +48,7 @@ export default function AdminAnnounce() {
               <div className="cm-mono" style={{ fontSize: 12, color: "var(--ink-soft)", margin: "4px 0" }}>{a.date} · {a.time}</div>
               <div style={{ fontSize: 13 }}>{a.body}</div>
             </div>
-            <button onClick={() => deleteAnnouncement(a.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--red)", height: "fit-content" }}>
+            <button onClick={async () => { const result = await deleteAnnouncement(a.id); if (!result.ok) setMessage(`ลบไม่สำเร็จ: ${result.error}`); }} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--red)", height: "fit-content" }}>
               <X size={16} />
             </button>
           </div>

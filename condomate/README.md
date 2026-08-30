@@ -54,8 +54,9 @@ the old `server/` folder remains only for local development.
 1. Import this repository in Vercel and create a project.
 2. In **Storage**, connect the **Neon** Marketplace integration. It injects
    `DATABASE_URL` into the project.
-3. In **Storage**, create a public Vercel Blob store for repair images. Vercel
-   injects `BLOB_READ_WRITE_TOKEN`.
+3. In **Storage**, create a **private** Vercel Blob store for repair images. Vercel
+   injects `BLOB_READ_WRITE_TOKEN`. Existing public Blob stores cannot be
+   converted to private; create a new private store if necessary.
 4. Set `SESSION_SECRET` to a long random value, and set `ADMIN_USERNAME` and
    `ADMIN_PASSWORD` to production-only credentials.
 5. Deploy. Do not set `VITE_API_URL` in Vercel: the web app uses same-origin

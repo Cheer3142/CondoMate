@@ -4,6 +4,7 @@ import { useData } from "../../data/store";
 import { REPAIR_TYPES } from "../../data/seed";
 import SectionTitle from "../../components/SectionTitle";
 import StatusPill from "../../components/StatusPill";
+import ProtectedImage from "../../components/ProtectedImage";
 
 export default function ResidentRepair() {
   const { data, session, addTicket } = useData();
@@ -12,16 +13,19 @@ export default function ResidentRepair() {
   const [photoName, setPhotoName] = useState("");
   const [image, setImage] = useState("");
   const [sent, setSent] = useState(false);
+  const [message, setMessage] = useState("");
 
   const tickets = data.tickets.filter((t) => t.room === session.room);
 
-  const submit = () => {
-    if (!detail.trim()) return;
-    addTicket({ room: session.room, type, detail, image });
+  const submit = async () => {
+    if (!detail.trim()) { setMessage("กรุณากรอกรายละเอียดปัญหา"); return; }
+    const result = await addTicket({ type, detail, image });
+    if (!result.ok) { setMessage(`ส่งแจ้งซ่อมไม่สำเร็จ: ${result.error}`); return; }
     setDetail("");
     setImage("");
     setPhotoName("");
     setSent(true);
+    setMessage("");
     setTimeout(() => setSent(false), 2200);
   };
 
@@ -49,7 +53,7 @@ export default function ResidentRepair() {
           <input type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={(e) => {
             const file = e.target.files?.[0];
             if (!file) return;
-            if (file.size > 4 * 1024 * 1024) { setPhotoName("รูปต้องมีขนาดไม่เกิน 4 MB"); return; }
+            if (file.size > 2 * 1024 * 1024) { setPhotoName("รูปต้องมีขนาดไม่เกิน 2 MB"); return; }
             const reader = new FileReader();
             reader.onload = () => { setImage(String(reader.result)); setPhotoName(file.name); };
             reader.readAsDataURL(file);
@@ -60,6 +64,7 @@ export default function ResidentRepair() {
         <button onClick={submit} className="cm-btn" style={{ width: "100%" }}>
           {sent ? "ส่งแจ้งซ่อมแล้ว ✓" : "ส่งแจ้งซ่อม"}
         </button>
+        {message && <p style={{ color: "var(--red)", fontSize: 12, margin: "10px 0 0" }}>{message}</p>}
       </div>
 
       <div style={{ fontSize: 12, fontWeight: 700, color: "var(--ink-soft)", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 8 }}>
@@ -74,7 +79,7 @@ export default function ResidentRepair() {
               <StatusPill status={t.status} />
             </div>
             <div style={{ fontSize: 12.5, color: "var(--ink-soft)", marginTop: 4 }}>{t.detail}</div>
-            {t.imageUrl && <img src={`${import.meta.env.VITE_API_URL?.replace(/\/api$/, "") || "http://localhost:4000"}${t.imageUrl}`} alt="รูปแจ้งซ่อม" style={{ width: "100%", maxHeight: 150, objectFit: "cover", borderRadius: 8, marginTop: 8 }} />}
+            {t.imageUrl && <ProtectedImage src={t.imageUrl} token={session.token} alt="รูปแจ้งซ่อม" style={{ width: "100%", maxHeight: 150, objectFit: "cover", borderRadius: 8, marginTop: 8 }} />}
             {t.note && <div className="cm-mono" style={{ fontSize: 11.5, color: "var(--teal)", marginTop: 6 }}>หมายเหตุ: {t.note}</div>}
           </div>
         ))}

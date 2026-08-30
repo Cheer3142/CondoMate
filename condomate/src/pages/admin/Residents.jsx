@@ -26,7 +26,7 @@ export default function AdminResidents() {
   return <div>
     <SectionTitle sub="จัดการเลขห้องและข้อมูลลูกบ้าน — เพิ่มห้องได้จากหน้านี้เท่านั้น">ลูกบ้าน</SectionTitle>
     <form onSubmit={submit} className="cm-card" style={{ padding: 16, marginBottom: 18 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(90px,.6fr) 1fr 1fr minmax(110px,.7fr) auto", gap: 10, alignItems: "end" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(90px,.6fr) 1fr 1fr minmax(110px,.7fr) minmax(100px,.6fr) auto", gap: 10, alignItems: "end" }}>
         <label style={{ fontSize: 12, fontWeight: 700 }}>ห้อง<input disabled={!!editing} className="cm-input" style={{ marginTop: 4 }} value={form.room} inputMode="numeric" maxLength={3} onChange={(e) => change("room", e.target.value.replace(/\D/g, ""))} placeholder="999" /></label>
         <label style={{ fontSize: 12, fontWeight: 700 }}>ชื่อ<input className="cm-input" style={{ marginTop: 4 }} value={form.name} onChange={(e) => change("name", e.target.value)} /></label>
         <label style={{ fontSize: 12, fontWeight: 700 }}>เบอร์โทร<input className="cm-input" style={{ marginTop: 4 }} value={form.phone} onChange={(e) => change("phone", e.target.value)} /></label>
@@ -34,7 +34,7 @@ export default function AdminResidents() {
         <label style={{ fontSize: 12, fontWeight: 700 }}>สถานะ<select className="cm-input" style={{ marginTop: 4 }} value={form.status} onChange={(e) => change("status", e.target.value)}><option value="active">ใช้งาน</option><option value="inactive">ไม่ใช้งาน</option></select></label>
         <div style={{ display: "flex", gap: 6 }}><button className="cm-btn" title={editing ? "บันทึก" : "เพิ่มห้อง"}>{editing ? <Save size={15} /> : <Plus size={15} />}{editing ? "บันทึก" : "เพิ่ม"}</button>{editing && <button type="button" onClick={cancel} className="cm-btn" style={{ background: "var(--ink-soft)" }} title="ยกเลิก"><X size={15} /></button>}</div>
       </div>
-      {message && <p style={{ margin: "8px 0 0", fontSize: 12, color: "var(--red)" }}>{message}</p>}
+      {message && <p style={{ margin: "8px 0 0", fontSize: 12, color: message.startsWith("บันทึกข้อมูล") ? "var(--green)" : "var(--red)" }}>{message}</p>}
     </form>
     <div className="cm-card" style={{ overflowX: "auto" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 570 }}>

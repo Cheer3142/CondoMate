@@ -3,9 +3,10 @@ import { useData } from "../../data/store";
 import { STATUS_META } from "../../data/seed";
 import SectionTitle from "../../components/SectionTitle";
 import StatusPill from "../../components/StatusPill";
+import ProtectedImage from "../../components/ProtectedImage";
 
 export default function AdminMaintenance() {
-  const { data, updateTicket } = useData();
+  const { data, updateTicket, adminSession } = useData();
   const [openId, setOpenId] = useState(data.tickets[0]?.id ?? null);
   const active = data.tickets.find((t) => t.id === openId) ?? data.tickets[0];
 
@@ -35,7 +36,7 @@ export default function AdminMaintenance() {
             <div className="cm-mono" style={{ fontSize: 12, color: "var(--ink-soft)" }}>Ticket #{active.id}</div>
             <div style={{ fontSize: 16, fontWeight: 700, marginTop: 4 }}>{active.room} · {active.type}</div>
             <div style={{ fontSize: 13, color: "var(--ink)", marginTop: 8 }}>{active.detail}</div>
-            {active.imageUrl && <img src={`${import.meta.env.VITE_API_URL?.replace(/\/api$/, "") || "http://localhost:4000"}${active.imageUrl}`} alt={`รูปประกอบ Ticket ${active.id}`} style={{ width: "100%", maxHeight: 260, objectFit: "cover", borderRadius: 10, marginTop: 12, border: "1px solid var(--line)" }} />}
+            {active.imageUrl && <ProtectedImage src={active.imageUrl} token={adminSession?.token} alt={`รูปประกอบ Ticket ${active.id}`} style={{ width: "100%", maxHeight: 260, objectFit: "cover", borderRadius: 10, marginTop: 12, border: "1px solid var(--line)" }} />}
 
             <label style={{ fontSize: 12.5, fontWeight: 600, color: "var(--ink-soft)", display: "block", marginTop: 16 }}>สถานะ</label>
             <select

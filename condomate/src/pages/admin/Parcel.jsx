@@ -7,12 +7,15 @@ export default function AdminParcel() {
   const { data, addParcel } = useData();
   const [room, setRoom] = useState("");
   const [courier, setCourier] = useState("");
+  const [message, setMessage] = useState("");
 
-  const submit = () => {
+  const submit = async () => {
     if (!room.trim() || !courier.trim()) return;
     const time = new Date().toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
-    addParcel({ room: room.trim(), courier: courier.trim(), time });
+    const result = await addParcel({ room: room.trim(), courier: courier.trim(), time });
+    if (!result.ok) { setMessage(`เพิ่มพัสดุไม่สำเร็จ: ${result.error}`); return; }
     setRoom(""); setCourier("");
+    setMessage("เพิ่มพัสดุเรียบร้อย");
   };
 
   return (
@@ -31,6 +34,7 @@ export default function AdminParcel() {
           <Plus size={15} />เพิ่มพัสดุ
         </button>
       </div>
+      {message && <p style={{ fontSize: 12, color: message.includes("ไม่สำเร็จ") ? "var(--red)" : "var(--green)", margin: "-10px 0 14px" }}>{message}</p>}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {data.parcels.map((p) => (
